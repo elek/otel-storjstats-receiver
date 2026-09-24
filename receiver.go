@@ -8,6 +8,7 @@ import (
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/receiver/receiverhelper"
 	"go.uber.org/zap"
 )
 
@@ -16,6 +17,7 @@ type storjstatsReceiver struct {
 	rules    []compiledRule
 	logger   *zap.Logger
 	consumer consumer.Metrics
+	obsrecv  *receiverhelper.ObsReport
 
 	source *udpSource
 	parser *packetParser
@@ -90,7 +92,10 @@ func (r *storjstatsReceiver) readLoop(ctx context.Context) {
 		if md.ResourceMetrics().Len() == 0 {
 			continue
 		}
-		if err := r.consumer.ConsumeMetrics(ctx, md); err != nil {
+		opCtx := r.obsrecv.StartMetricsOp(ctx)
+		err = r.consumer.ConsumeMetrics(opCtx, md)
+		r.obsrecv.EndMetricsOp(opCtx, formatAdm, md.DataPointCount(), err)
+		if err != nil {
 			r.logger.Warn("consume metrics failed", zap.Error(err))
 		}
 	}

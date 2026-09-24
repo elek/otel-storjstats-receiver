@@ -2,6 +2,7 @@ package storjstatsreceiver
 
 import (
 	"context"
+	"errors"
 	"net"
 	"testing"
 	"time"
@@ -10,9 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zeebo/admission/v3/admproto"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver/receivertest"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 // buildPacket encodes an admproto packet with the given samples.
@@ -130,4 +133,60 @@ func TestReceiver_EndToEnd(t *testing.T) {
 	// Dropped metric absent.
 	_, present := names["noisy_dropped_metric"]
 	assert.False(t, present, "unmatched metric leaked into sink")
+}
+
+func TestReceiver_ObsReport(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		consumer func() consumer.Metrics
+		metric   string
+	}{
+		{"accepted", func() consumer.Metrics { return &consumertest.MetricsSink{} }, "otelcol_receiver_accepted_metric_points"},
+		{"refused", func() consumer.Metrics { return consumertest.NewErr(errors.New("boom")) }, "otelcol_receiver_refused_metric_points"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tel := componenttest.NewTelemetry()
+			t.Cleanup(func() { require.NoError(t, tel.Shutdown(context.Background())) })
+
+			endpoint := freeUDPPort(t)
+			cfg := createDefaultConfig().(*Config)
+			cfg.Endpoint = endpoint
+			cfg.Include = []IncludeRule{
+				{Name: "upload_success_size_bytes", Fields: []string{"count", "sum"}},
+			}
+
+			settings := receivertest.NewNopSettings(typeStr)
+			settings.TelemetrySettings = tel.NewTelemetrySettings()
+			r, err := createMetrics(context.Background(), settings, cfg, tc.consumer())
+			require.NoError(t, err)
+			require.NoError(t, r.Start(context.Background(), componenttest.NewNopHost()))
+			t.Cleanup(func() { _ = r.Shutdown(context.Background()) })
+
+			pkt := buildPacket(t, "storagenode", []byte("node-1"), map[string]float64{
+				"upload_success_size_bytes count": 42,
+				"upload_success_size_bytes sum":   123456,
+				"noisy_dropped_metric value":      999,
+			})
+			client, err := net.Dial("udp", endpoint)
+			require.NoError(t, err)
+			defer client.Close()
+			_, err = client.Write(pkt)
+			require.NoError(t, err)
+
+			require.Eventually(t, func() bool {
+				m, err := tel.GetMetric(tc.metric)
+				if err != nil {
+					return false
+				}
+				sum, ok := m.Data.(metricdata.Sum[int64])
+				if !ok || len(sum.DataPoints) != 1 {
+					return false
+				}
+				dp := sum.DataPoints[0]
+				recv, _ := dp.Attributes.Value("receiver")
+				transport, _ := dp.Attributes.Value("transport")
+				return dp.Value == 2 && recv.AsString() == settings.ID.String() && transport.AsString() == "udp"
+			}, 2*time.Second, 20*time.Millisecond, "waiting for %s", tc.metric)
+		})
+	}
 }

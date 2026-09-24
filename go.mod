@@ -6,6 +6,15 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/zeebo/admission/v3 v3.0.3
 	go.opentelemetry.io/collector/component v1.64.0
+	go.opentelemetry.io/collector/component/componenttest v0.158.0
+	go.opentelemetry.io/collector/consumer v1.64.0
+	go.opentelemetry.io/collector/consumer/consumertest v0.158.0
+	go.opentelemetry.io/collector/pdata v1.64.0
+	go.opentelemetry.io/collector/receiver v1.64.0
+	go.opentelemetry.io/collector/receiver/receiverhelper v0.158.0
+	go.opentelemetry.io/collector/receiver/receivertest v0.158.0
+	go.opentelemetry.io/otel/sdk/metric v1.44.0
+	go.uber.org/zap v1.28.0
 )
 
 require (
@@ -23,26 +32,19 @@ require (
 	github.com/zeebo/float16 v0.1.0 // indirect
 	github.com/zeebo/incenc v0.0.0-20180505221441-0d92902eec54 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/collector/component/componenttest v0.158.0 // indirect
-	go.opentelemetry.io/collector/consumer v1.64.0 // indirect
 	go.opentelemetry.io/collector/consumer/consumererror v0.158.0 // indirect
-	go.opentelemetry.io/collector/consumer/consumertest v0.158.0 // indirect
 	go.opentelemetry.io/collector/consumer/xconsumer v0.158.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.64.0 // indirect
 	go.opentelemetry.io/collector/internal/componentalias v0.158.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.64.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.158.0 // indirect
 	go.opentelemetry.io/collector/pipeline v1.64.0 // indirect
-	go.opentelemetry.io/collector/receiver v1.64.0 // indirect
-	go.opentelemetry.io/collector/receiver/receivertest v0.158.0 // indirect
+	go.opentelemetry.io/collector/pipeline/xpipeline v0.158.0 // indirect
 	go.opentelemetry.io/collector/receiver/xreceiver v0.158.0 // indirect
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.28.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 	google.golang.org/grpc v1.82.1 // indirect

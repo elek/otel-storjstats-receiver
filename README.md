@@ -93,4 +93,19 @@ This split resolves the OTel constraint that one metric name has exactly
 one aggregation type, and mirrors the Prometheus `_count` / `_sum`
 convention.
 
+## Internal telemetry
+
+The receiver reports the standard collector receiver metrics via
+`receiverhelper.ObsReport`, exposed on the collector's own telemetry endpoint
+(e.g. `:8888/metrics`) with `receiver="storjstats[/name]"` and
+`transport="udp"` labels:
+
+- `otelcol_receiver_accepted_metric_points_total`
+- `otelcol_receiver_refused_metric_points_total`
+- `otelcol_receiver_failed_metric_points_total` (only with the
+  `receiverhelper.newReceiverMetrics` feature gate)
+
+Counts are data points forwarded after include-rule filtering; samples dropped
+by the rules or unparseable packets are not counted.
+
 [statreceiver]: https://github.com/storj/statreceiver
