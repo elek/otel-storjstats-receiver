@@ -34,15 +34,29 @@ func TestConvert_ResourceAttributes(t *testing.T) {
 
 	md := convertToMetrics([]sample{
 		{application: "storagenode", instance: "node-1", key: []byte("x value"), value: 1},
-	}, rules, now)
+	}, rules, "203.0.113.7", now)
 
 	rm := md.ResourceMetrics()
 	require.Equal(t, 1, rm.Len())
 	attrs := rm.At(0).Resource().Attributes()
 	svc, _ := attrs.Get("service.name")
 	inst, _ := attrs.Get("service.instance.id")
+	src, _ := attrs.Get("source.address")
 	assert.Equal(t, "storagenode", svc.AsString())
 	assert.Equal(t, "node-1", inst.AsString())
+	assert.Equal(t, "203.0.113.7", src.AsString())
+}
+
+func TestConvert_NoSourceAddress(t *testing.T) {
+	rules := compileRules(t, []IncludeRule{{Name: "x"}})
+
+	md := convertToMetrics([]sample{
+		{application: "storagenode", instance: "node-1", key: []byte("x value"), value: 1},
+	}, rules, "", time.Now())
+
+	require.Equal(t, 1, md.ResourceMetrics().Len())
+	_, ok := md.ResourceMetrics().At(0).Resource().Attributes().Get("source.address")
+	assert.False(t, ok)
 }
 
 func TestConvert_GaugeGroupsFieldsUnderOneMetric(t *testing.T) {
@@ -53,7 +67,7 @@ func TestConvert_GaugeGroupsFieldsUnderOneMetric(t *testing.T) {
 		{application: "sn", instance: "i", key: []byte("upload_success_duration_ns ravg"), value: 10},
 		{application: "sn", instance: "i", key: []byte("upload_success_duration_ns r50"), value: 20},
 		{application: "sn", instance: "i", key: []byte("upload_success_duration_ns r99"), value: 30},
-	}, rules, now)
+	}, rules, "", now)
 
 	m := findMetric(t, md, "upload_success_duration_ns")
 	require.Equal(t, pmetric.MetricTypeGauge, m.Type())
@@ -76,7 +90,7 @@ func TestConvert_SumFieldsBecomeSeparateMetrics(t *testing.T) {
 	md := convertToMetrics([]sample{
 		{application: "sn", instance: "i", key: []byte("upload_success_size_bytes count"), value: 100},
 		{application: "sn", instance: "i", key: []byte("upload_success_size_bytes sum"), value: 12345},
-	}, rules, now)
+	}, rules, "", now)
 
 	countM := findMetric(t, md, "upload_success_size_bytes_count")
 	sumM := findMetric(t, md, "upload_success_size_bytes_sum")
@@ -102,7 +116,7 @@ func TestConvert_MixedGaugeAndSumForSameBaseName(t *testing.T) {
 	md := convertToMetrics([]sample{
 		{application: "sn", instance: "i", key: []byte("upload_success_duration_ns ravg"), value: 10},
 		{application: "sn", instance: "i", key: []byte("upload_success_duration_ns count"), value: 42},
-	}, rules, now)
+	}, rules, "", now)
 
 	// One Gauge named after the base, one Sum with _count suffix.
 	gauge := findMetric(t, md, "upload_success_duration_ns")
@@ -117,7 +131,7 @@ func TestConvert_TagsBecomeAttributes(t *testing.T) {
 
 	md := convertToMetrics([]sample{
 		{application: "sn", instance: "i", key: []byte("pieces_writer,size=2m,op=write ravg"), value: 5},
-	}, rules, now)
+	}, rules, "", now)
 
 	m := findMetric(t, md, "pieces_writer")
 	dp := m.Gauge().DataPoints().At(0)
@@ -137,7 +151,7 @@ func TestConvert_DropsUnmatched(t *testing.T) {
 	md := convertToMetrics([]sample{
 		{application: "sn", instance: "i", key: []byte("dropped value"), value: 1},
 		{application: "sn", instance: "i", key: []byte("keeper value"), value: 2},
-	}, rules, now)
+	}, rules, "", now)
 
 	// Only "keeper" should be present.
 	sm := md.ResourceMetrics().At(0).ScopeMetrics().At(0).Metrics()
@@ -149,7 +163,7 @@ func TestConvert_DropsUnmatched(t *testing.T) {
 }
 
 func TestConvert_EmptySamplesEmptyMetrics(t *testing.T) {
-	md := convertToMetrics(nil, nil, time.Now())
+	md := convertToMetrics(nil, nil, "", time.Now())
 	assert.Equal(t, 0, md.ResourceMetrics().Len())
 }
 
@@ -159,7 +173,7 @@ func TestConvert_ScopeName(t *testing.T) {
 
 	md := convertToMetrics([]sample{
 		{application: "sn", instance: "i", key: []byte("x value"), value: 1},
-	}, rules, now)
+	}, rules, "", now)
 
 	assert.Equal(t, "storjstats", md.ResourceMetrics().At(0).ScopeMetrics().At(0).Scope().Name())
 }

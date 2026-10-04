@@ -81,7 +81,9 @@ Applied per-field when a rule does not set `type:`:
 ## Emission rules
 
 - Resource attributes: `service.name = <application>`,
-  `service.instance.id = <instance>`.
+  `service.instance.id = <instance>`, `source.address = <sender IP>` (the
+  UDP packet's source IP as seen by the receiver, so it may be a NAT or proxy
+  address).
 - Scope name: `storjstats`.
 - **Gauge** metric name is the stat's base name; the field becomes the
   `field` data-point attribute. All tags become data-point attributes too.

@@ -20,8 +20,11 @@ var processStartTime = time.Now()
 //   - Sum   → one metric named <base>_<field>, one data point per tag set.
 //     No "field" attribute.
 //
+// sourceIP is the sender's address, recorded as the "source.address" resource
+// attribute; it is omitted when empty.
+//
 // An empty output has zero ResourceMetrics.
-func convertToMetrics(samples []sample, rules []compiledRule, ts time.Time) pmetric.Metrics {
+func convertToMetrics(samples []sample, rules []compiledRule, sourceIP string, ts time.Time) pmetric.Metrics {
 	md := pmetric.NewMetrics()
 	if len(samples) == 0 {
 		return md
@@ -56,6 +59,9 @@ func convertToMetrics(samples []sample, rules []compiledRule, ts time.Time) pmet
 			rm := md.ResourceMetrics().AppendEmpty()
 			rm.Resource().Attributes().PutStr("service.name", s.application)
 			rm.Resource().Attributes().PutStr("service.instance.id", s.instance)
+			if sourceIP != "" {
+				rm.Resource().Attributes().PutStr("source.address", sourceIP)
+			}
 			sm := rm.ScopeMetrics().AppendEmpty()
 			sm.Scope().SetName(scopeName)
 			b = &bucket{

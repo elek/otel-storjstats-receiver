@@ -85,7 +85,7 @@ func TestReceiver_EndToEnd(t *testing.T) {
 	// Aggregate metric-name → data-point count across all received batches.
 	names := map[string]int{}
 	types := map[string]pmetric.MetricType{}
-	var seenApp, seenInst string
+	var seenApp, seenInst, seenSource string
 	for _, md := range sink.AllMetrics() {
 		for i := 0; i < md.ResourceMetrics().Len(); i++ {
 			rm := md.ResourceMetrics().At(i)
@@ -94,6 +94,9 @@ func TestReceiver_EndToEnd(t *testing.T) {
 			}
 			if v, ok := rm.Resource().Attributes().Get("service.instance.id"); ok {
 				seenInst = v.AsString()
+			}
+			if v, ok := rm.Resource().Attributes().Get("source.address"); ok {
+				seenSource = v.AsString()
 			}
 			for j := 0; j < rm.ScopeMetrics().Len(); j++ {
 				sm := rm.ScopeMetrics().At(j)
@@ -115,6 +118,7 @@ func TestReceiver_EndToEnd(t *testing.T) {
 
 	assert.Equal(t, "storagenode", seenApp)
 	assert.Equal(t, "node-1", seenInst)
+	assert.Equal(t, "127.0.0.1", seenSource)
 
 	// Sum-typed metrics get _count / _sum suffix.
 	assert.Equal(t, 1, names["upload_success_size_bytes_count"])

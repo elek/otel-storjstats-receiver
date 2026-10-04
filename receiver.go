@@ -66,7 +66,7 @@ func (r *storjstatsReceiver) readLoop(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		data, ts, err := r.source.Next()
+		data, from, ts, err := r.source.Next()
 		if err != nil {
 			if ctx.Err() != nil {
 				return
@@ -88,7 +88,11 @@ func (r *storjstatsReceiver) readLoop(ctx context.Context) {
 			continue
 		}
 
-		md := convertToMetrics(samples, r.rules, ts)
+		var sourceIP string
+		if from.IsValid() {
+			sourceIP = from.String()
+		}
+		md := convertToMetrics(samples, r.rules, sourceIP, ts)
 		if md.ResourceMetrics().Len() == 0 {
 			continue
 		}

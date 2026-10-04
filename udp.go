@@ -8,6 +8,7 @@ package storjstatsreceiver
 import (
 	"errors"
 	"net"
+	"net/netip"
 	"sync"
 	"time"
 )
@@ -60,10 +61,10 @@ func (s *udpSource) Addr() net.Addr {
 	return s.conn.LocalAddr()
 }
 
-// Next blocks until the next datagram arrives, then returns its bytes and
-// receipt time. The returned slice aliases an internal buffer; copy it if you
-// need to retain it past the next call.
-func (s *udpSource) Next() ([]byte, time.Time, error) {
+// Next blocks until the next datagram arrives, then returns its bytes, sender
+// IP and receipt time. The returned slice aliases an internal buffer; copy it
+// if you need to retain it past the next call.
+func (s *udpSource) Next() ([]byte, netip.Addr, time.Time, error) {
 	s.mu.Lock()
 	conn := s.conn
 	buf := s.buf
@@ -71,17 +72,18 @@ func (s *udpSource) Next() ([]byte, time.Time, error) {
 	s.mu.Unlock()
 
 	if closed {
-		return nil, time.Time{}, errors.New("udp source closed")
+		return nil, netip.Addr{}, time.Time{}, errors.New("udp source closed")
 	}
 	if conn == nil {
-		return nil, time.Time{}, errors.New("udp source not started")
+		return nil, netip.Addr{}, time.Time{}, errors.New("udp source not started")
 	}
 
-	n, _, err := conn.ReadFrom(buf)
+	n, from, err := conn.ReadFromUDPAddrPort(buf)
 	if err != nil {
-		return nil, time.Time{}, err
+		return nil, netip.Addr{}, time.Time{}, err
 	}
-	return buf[:n], time.Now(), nil
+	// Unmap so IPv4 senders on a dual-stack socket report as plain IPv4.
+	return buf[:n], from.Addr().Unmap(), time.Now(), nil
 }
 
 // Close stops the source and unblocks any in-flight Next.
